@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASCII Lily Bouquet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,600;1,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #000000;
+      overflow: hidden;
+      font-family: 'JetBrains Mono', monospace;
+      color: #ffffff;
+    }
+
+    #ascii-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      z-index: 1;
+    }
+
+    /* Editorial Headline Overlay */
+    .headline-overlay {
+      position: fixed;
+      top: 4.2vh;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      text-align: center;
+      pointer-events: none;
+      width: 92vw;
+      max-width: 820px;
+    }
+
+    .headline {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 500;
+      font-size: clamp(2.1rem, 4.4vw, 3.8rem);
+      line-height: 1.08;
+      letter-spacing: -0.015em;
+      color: #f4f1ea;
+      text-shadow: 0 6px 28px rgba(0, 0, 0, 0.92);
+    }
+
+    .highlight-flowers {
+      pointer-events: auto;
+      cursor: pointer;
+      font-style: italic;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff6b8b 0%, #ffa87a 50%, #ffd97d 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 18px rgba(255, 107, 139, 0.38));
+      transition: transform 0.25s ease, filter 0.25s ease;
+      display: inline-block;
+      position: relative;
+    }
+
+    .highlight-flowers:hover {
+      transform: scale(1.06) translateY(-1px);
+      filter: drop-shadow(0 0 24px rgba(255, 140, 170, 0.72));
+    }
+
+    .highlight-flowers::after {
+      content: 'click: theme';
+      position: absolute;
+      bottom: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-style: normal;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: rgba(255, 180, 195, 0.65);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .highlight-flowers:hover::after {
+      opacity: 1;
+    }
+
+    .highlight-code {
+      pointer-events: auto;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72em;
+      font-weight: 600;
+      color: #6dff8e;
+      background: rgba(28, 88, 45, 0.28);
+      border: 1px solid rgba(109, 255, 142, 0.48);
+      padding: 0.06em 0.34em 0.1em;
+      border-radius: 9px;
+      box-shadow: 0 0 22px rgba(109, 255, 142, 0.22), inset 0 0 10px rgba(109, 255, 142, 0.12);
+      text-shadow: 0 0 12px rgba(109, 255, 142, 0.65);
+      transition: all 0.25s ease;
+      display: inline-block;
+      vertical-align: middle;
+      position: relative;
+    }
+
+    .highlight-code:hover, .highlight-code.active {
+      background: rgba(45, 145, 72, 0.42);
+      border-color: #8effa8;
+      box-shadow: 0 0 30px rgba(109, 255, 142, 0.55), inset 0 0 14px rgba(109, 255, 142, 0.28);
+      transform: scale(1.05);
+    }
+
+    .highlight-code::after {
+      content: 'click: matrix [C]';
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      color: rgba(109, 255, 142, 0.7);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .highlight-code:hover::after {
+      opacity: 1;
+    }
+
+    /* Bottom VS Code-style Terminal Telemetry Bar */
+    .terminal-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 75%, transparent 100%);
+      padding: 14px 20px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      color: rgba(190, 205, 195, 0.68);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      pointer-events: none;
+    }
+
+    .code-snippet-line {
+      color: rgba(165, 180, 195, 0.46);
+      font-size: 10.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .code-snippet-line .kw { color: rgba(255, 123, 156, 0.65); }
+    .code-snippet-line .num { color: rgba(130, 200, 255, 0.65); }
+    .code-snippet-line .fn { color: rgba(109, 255, 142, 0.68); }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 4px;
+      margin-top: 2px;
+    }
+
+    .status-left, .status-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      pointer-events: auto;
+    }
+
+    .badge {
+      cursor: pointer;
+      padding: 1px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(220, 235, 225, 0.8);
+      transition: all 0.18s ease;
+    }
+
+    .badge:hover {
+      background: rgba(109, 255, 142, 0.16);
+      border-color: rgba(109, 255, 142, 0.45);
+      color: #6dff8e;
+    }
+
+    .dot-live {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #6dff8e;
+      box-shadow: 0 0 8px #6dff8e;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Headline Overlay -->
+  <header class="headline-overlay">
+    <h1 class="headline">
+      Who needs <span class="highlight-flowers" id="btn-theme" title="Click to cycle bouquet color palette">flowers</span><br />
+      when <em>you</em> can <span class="highlight-code" id="btn-code" title="Click to toggle Code Vision Matrix Mode">code</span> them?
+    </h1>
+  </header>
+
+  <!-- Fullscreen ASCII Canvas -->
+  <canvas id="ascii-canvas"></canvas>
+
+  <!-- Subtle Bottom Code & Telemetry Footer (Echoes the VS Code snippet in the reel) -->
+  <footer class="terminal-bar" id="terminal-bar">
+    <div class="code-snippet-line" id="math-line">
+      <span class="kw">let</span> xmin = <span class="num">1e9</span>, xmax = <span class="num">-1e9</span>, ymin = <span class="num">1e9</span>, ymax = <span class="num">-1e9</span>;
+      <span class="kw">for</span> (<span class="kw">let</span> k = <span class="num">0</span>; k &lt; pts.length; k++) { x = pts[k][<span class="num">0</span>]; y = pts[k][<span class="num">1</span>]; <span class="kw">if</span> (x &lt; xmin) xmin = x; <span class="kw">if</span> (y &gt; ymax) ymax = y; }
+    </div>
+    <div class="status-row">
+      <div class="status-left">
+        <span><i class="dot-live"></i><span id="stage-label">stage: blooming_lilies() [100%]</span></span>
+        <span class="badge" id="badge-theme">Palette: Classic Stargazer [T]</span>
+        <span class="badge" id="badge-code">Mode: Botanical ASCII [C]</span>
+        <span class="badge" id="badge-audio">Synth: ON 🎵 [M]</span>
+      </div>
+      <div class="status-right">
+        <span class="badge" id="badge-replay">↻ Replay Growth [Space]</span>
+        <span id="fps-label">Ln 81, Col 12 · 60 FPS · UTF-8</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('ascii-canvas');
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      // Offscreen low-res buffer for procedural botanical painting
+      const offCanvas = document.createElement('canvas');
+      const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+      // UI Elements
+      const btnTheme = document.getElementById('btn-theme');
+      const btnCode = document.getElementById('btn-code');
+      const badgeTheme = document.getElementById('badge-theme');
+      const badgeCode = document.getElementById('badge-code');
+      const badgeAudio = document.getElementById('badge-audio');
+      const badgeReplay = document.getElementById('badge-replay');
+      const stageLabel = document.getElementById('stage-label');
+      const fpsLabel = document.getElementById('fps-label');
+      const mathLine = document.getElementById('math-line');
+
+      // Grid metrics
+      const CELL_W = 7;
+      const CELL_H = 11;
+      let cols = 120;
+      let rows = 80;
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+
+      // ASCII character ramps
+      const BOTANICAL_RAMP = ' .,:;+=*#%@';
+      const CODE_RAMP      = ' .:;+x10f{}#';
+
+      // State
+      let startTime = performance.now();
+      let codeVision = false;
+      let soundEnabled = true;
+      let currentThemeIdx = 0;
+      let themeBlend = 1;
+      let prevThemeIdx = 0;
+
+      // Mouse & interaction state
+      const pointer = {
+        x: -9999,
+        y: -9999,
+        gx: -9999,
+        gy: -9999,
+        vx: 0,
+        vy: 0,
+        hoveredId: -1,
+        lastHoveredId: -1
+      };
+
+      // Themes: 9 flowers each [inner RGB, mid RGB, tip RGB, speckle RGB]
+      const THEMES = [
+        {
+          name: 'Classic Stargazer',
+          stemBase: [38, 128, 42],
+          stemLight: [95, 205, 82],
+          anther: [255, 200, 55],
+          flowers: [
+            // 0: Top-left blush pink lily
+            { inner: [255, 225, 235], mid: [248, 175, 200], tip: [255, 240, 246], speck: [185, 65, 95] },
+            // 1: Top-right golden yellow lily
+            { inner: [255, 210, 45],  mid: [245, 185, 35],  tip: [255, 238, 115], speck: [165, 85, 20] },
+            // 2: Mid-left golden-amber lily
+            { inner: [255, 185, 30],  mid: [245, 155, 25],  tip: [255, 225, 95],  speck: [170, 65, 15] },
+            // 3: Mid-right deep burgundy/magenta lily
+            { inner: [185, 32, 82],   mid: [215, 58, 112],  tip: [155, 25, 68],   speck: [90, 10, 35] },
+            // 4: Lower-left sunny yellow lily
+            { inner: [250, 215, 40],  mid: [240, 195, 30],  tip: [255, 242, 120], speck: [155, 90, 18] },
+            // 5: Lower-right dark crimson lily
+            { inner: [175, 22, 32],   mid: [205, 38, 48],   tip: [135, 15, 22],   speck: [75, 8, 12] },
+            // 6: Center-top heroic crimson red lily
+            { inner: [220, 28, 38],   mid: [245, 52, 58],   tip: [175, 18, 28],   speck: [95, 10, 15] },
+            // 7: Center-left vibrant Stargazer pink lily
+            { inner: [235, 62, 138],  mid: [250, 105, 172], tip: [255, 195, 222], speck: [145, 20, 75] },
+            // 8: Center-right luminous white Casablancalily
+            { inner: [215, 242, 205], mid: [248, 248, 245], tip: [255, 255, 255], speck: [135, 165, 115] },
+            // 9: Foreground center warm peach-apricot lily
+            { inner: [245, 135, 95],  mid: [255, 182, 145], tip: [255, 222, 198], speck: [175, 62, 42] }
+          ]
+        },
+        {
+          name: 'Moonlit Cyber',
+          stemBase: [22, 118, 110],
+          stemLight: [72, 235, 205],
+          anther: [255, 240, 130],
+          flowers: [
+            { inner: [165, 220, 255], mid: [115, 175, 255], tip: [225, 245, 255], speck: [50, 95, 200] },
+            { inner: [95, 245, 220],  mid: [55, 205, 195],  tip: [185, 255, 245], speck: [20, 120, 120] },
+            { inner: [180, 110, 255], mid: [145, 75, 245],  tip: [225, 185, 255], speck: [85, 25, 165] },
+            { inner: [235, 45, 165],  mid: [195, 28, 138],  tip: [255, 135, 215], speck: [110, 10, 80] },
+            { inner: [70, 225, 255],  mid: [45, 175, 235],  tip: [180, 248, 255], speck: [15, 95, 145] },
+            { inner: [155, 35, 220],  mid: [120, 22, 185],  tip: [215, 120, 255], speck: [65, 10, 110] },
+            { inner: [255, 42, 135],  mid: [235, 72, 175],  tip: [255, 165, 225], speck: [135, 12, 75] },
+            { inner: [85, 195, 255],  mid: [125, 225, 255], tip: [225, 250, 255], speck: [35, 105, 185] },
+            { inner: [210, 245, 255], mid: [238, 252, 255], tip: [255, 255, 255], speck: [95, 185, 220] },
+            { inner: [195, 125, 255], mid: [225, 168, 255], tip: [250, 225, 255], speck: [115, 45, 185] }
+          ]
+        },
+        {
+          name: 'Golden Hour',
+          stemBase: [58, 118, 35],
+          stemLight: [142, 205, 72],
+          anther: [255, 235, 110],
+          flowers: [
+            { inner: [255, 215, 165], mid: [255, 185, 128], tip: [255, 242, 215], speck: [185, 95, 55] },
+            { inner: [255, 195, 35],  mid: [255, 165, 22],  tip: [255, 235, 115], speck: [175, 78, 12] },
+            { inner: [255, 145, 45],  mid: [242, 115, 32],  tip: [255, 205, 110], speck: [165, 55, 15] },
+            { inner: [215, 58, 42],   mid: [238, 88, 62],   tip: [175, 38, 28],   speck: [105, 18, 12] },
+            { inner: [255, 210, 55],  mid: [248, 182, 38],  tip: [255, 245, 145], speck: [168, 88, 18] },
+            { inner: [195, 42, 28],   mid: [225, 68, 45],   tip: [155, 25, 18],   speck: [85, 12, 8] },
+            { inner: [245, 68, 32],   mid: [255, 105, 52],  tip: [210, 42, 22],   speck: [125, 22, 10] },
+            { inner: [255, 118, 82],  mid: [255, 155, 118], tip: [255, 215, 188], speck: [175, 52, 35] },
+            { inner: [255, 242, 205], mid: [255, 248, 228], tip: [255, 255, 245], speck: [185, 145, 85] },
+            { inner: [255, 168, 78],  mid: [255, 202, 125], tip: [255, 238, 195], speck: [185, 82, 28] }
+          ]
+        }
+      ];
+
+      // Bouquet layout definition (normalized coordinates relative to bouquet center)
+      // Base of all stems converges near (0, +0.44)
+      const FLOWER_LAYOUT = [
+        // Back layer
+        { id: 0, nx: -0.17, ny: -0.25, radius: 0.145, rot: -0.25, layer: 0, delay: 0.08, note: 587.33 }, // D5
+        { id: 1, nx:  0.19, ny: -0.23, radius: 0.140, rot:  0.32, layer: 0, delay: 0.14, note: 659.25 }, // E5
+        { id: 2, nx: -0.25, ny: -0.07, radius: 0.155, rot: -0.42, layer: 1, delay: 0.18, note: 523.25 }, // C5
+        { id: 3, nx:  0.24, ny: -0.05, radius: 0.160, rot:  0.38, layer: 1, delay: 0.22, note: 440.00 }, // A4
+        { id: 4, nx: -0.24, ny:  0.15, radius: 0.142, rot: -0.52, layer: 1, delay: 0.26, note: 392.00 }, // G4
+        { id: 5, nx:  0.23, ny:  0.17, radius: 0.138, rot:  0.48, layer: 1, delay: 0.30, note: 329.63 }, // E4
+        // Heroic mid & front blooms
+        { id: 6, nx: -0.01, ny: -0.18, radius: 0.205, rot:  0.04, layer: 2, delay: 0.00, note: 783.99 }, // G5
+        { id: 7, nx: -0.11, ny:  0.02, radius: 0.195, rot: -0.18, layer: 3, delay: 0.06, note: 659.25 }, // E5
+        { id: 8, nx:  0.13, ny:  0.03, radius: 0.200, rot:  0.16, layer: 3, delay: 0.10, note: 880.00 }, // A5
+        { id: 9, nx: -0.01, ny:  0.20, radius: 0.210, rot:  0.02, layer: 4, delay: 0.03, note: 523.25 }  // C5
+      ];
+
+      // Top decorative unopened/half-opened buds (like the top of the reel)
+      const TOP_BUDS = [
+        { nx: -0.07, ny: -0.38, angle: -0.12, size: 0.048, delay: 0.15, colorIdx: 8 },
+        { nx:  0.01, ny: -0.40, angle:  0.03, size: 0.068, delay: 0.05, colorIdx: 7 },
+        { nx:  0.09, ny: -0.42, angle:  0.16, size: 0.045, delay: 0.20, colorIdx: 6 }
+      ];
+
+      // Leaves sprouting along lower stems
+      const LEAVES = [
+        { stemIdx: 4, t: 0.28, angle: -0.85, len: 0.16, width: 0.030 },
+        { stemIdx: 4, t: 0.48, angle: -0.65, len: 0.15, width: 0.028 },
+        { stemIdx: 7, t: 0.22, angle: -0.50, len: 0.17, width: 0.032 },
+        { stemIdx: 9, t: 0.18, angle: -0.30, len: 0.16, width: 0.032 },
+        { stemIdx: 9, t: 0.25, angle:  0.35, len: 0.16, width: 0.032 },
+        { stemIdx: 8, t: 0.24, angle:  0.55, len: 0.17, width: 0.032 },
+        { stemIdx: 5, t: 0.32, angle:  0.82, len: 0.16, width: 0.030 },
+        { stemIdx: 5, t: 0.52, angle:  0.68, len: 0.14, width: 0.026 },
+        { stemIdx: 2, t: 0.40, angle: -0.75, len: 0.14, width: 0.025 },
+        { stemIdx: 3, t: 0.42, angle:  0.72, len: 0.14, width: 0.025 }
+      ];
+
+      // Dynamic runtime state for each flower (spring hover magnification + physics)
+      const flowerState = FLOWER_LAYOUT.map((f) => ({
+        ...f,
+        hoverScale: 1.0,
+        scaleVel: 0.0,
+        offsetX: 0.0,
+        offsetY: 0.0,
+        velX: 0.0,
+        velY: 0.0,
+        clickPulse: 0.0,
+        screenX: 0,
+        screenY: 0,
+        screenR: 0
+      }));
+
+      // Particle systems: Floating ASCII pollen/fireflies + Falling ASCII petals
+      const pollenParticles = [];
+      const fallingPetals = [];
+
+      // Initialize ambient pollen particles
+      for (let i = 0; i < 42; i++) {
+        pollenParticles.push(createPollen(true));
+      }
+
+      function createPollen(randomY = false, x = null, y = null, rgb = null) {
+        const chars = ['*', '+', '·', '.', '°'];
+        return {
+          x: x !== null ? x : width * (0.25 + Math.random() * 0.5),
+          y: y !== null ? y : (randomY ? height * (0.18 + Math.random() * 0.72) : height * 0.75),
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: -(0.25 + Math.random() * 0.65),
+          char: chars[Math.floor(Math.random() * chars.length)],
+          alpha: 0.2 + Math.random() * 0.75,
+          phase: Math.random() * Math.PI * 2,
+          rgb: rgb || [255, 225, 115],
+          life: 1.0,
+          decay: x !== null ? (0.006 + Math.random() * 0.008) : 0
+        };
+      }
+
+      function spawnFallingPetals(flower, themeFlower) {
+        const count = 3 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = flower.screenR * (0.2 + Math.random() * 0.35);
+          fallingPetals.push({
+            x: flower.screenX + Math.cos(angle) * dist,
+            y: flower.screenY + Math.sin(angle) * dist,
+            vx: (Math.random() - 0.5) * 2.2,
+            vy: -0.8 + Math.random() * 1.2,
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.06,
+            swayPhase: Math.random() * Math.PI * 2,
+            rgb: themeFlower.mid.slice(),
+            tipRgb: themeFlower.tip.slice(),
+            landed: false,
+            alpha: 1.0
+          });
+        }
+        // Keep max 45 landed petals so screen stays fast & clean
+        if (fallingPetals.length > 55) {
+          fallingPetals.splice(0, fallingPetals.length - 55);
+        }
+      }
+
+      // Web Audio API Generative Pentatonic Harp / Synth
+      let audioCtx = null;
+      let lastNoteTime = 0;
+
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+
+      function playFlowerNote(freq, panX = 0, isChord = false) {
+        if (!soundEnabled) return;
+        const nowPerf = performance.now();
+        if (!isChord && nowPerf - lastNoteTime < 90) return;
+        lastNoteTime = nowPerf;
+
+        ensureAudio();
+        if (!audioCtx) return;
+
+        const now = audioCtx.currentTime;
+        const notes = isChord ? [freq, freq * 1.25, freq * 1.5] : [freq];
+
+        notes.forEach((f, idx) => {
+          const osc = audioCtx.createOscillator();
+          const sub = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          const filter = audioCtx.createBiquadFilter();
+
+          osc.type = 'triangle';
+          sub.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + idx * 0.045);
+          sub.frequency.setValueAtTime(f * 0.5, now + idx * 0.045);
+
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1900, now);
+          filter.frequency.exponentialRampToValueAtTime(420, now + 1.4);
+
+          const peakGain = isChord ? 0.055 : 0.045;
+          gain.gain.setValueAtTime(0.0001, now + idx * 0.045);
+          gain.gain.linearRampToValueAtTime(peakGain, now + idx * 0.045 + 0.025);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.045 + 1.65);
+
+          if (audioCtx.createStereoPanner) {
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.setValueAtTime(Math.max(-0.8, Math.min(0.8, panX)), now);
+            osc.connect(filter);
+            sub.connect(filter);
+            filter.connect(gain);
+            gain.connect(panner);
+            panner.connect(audioCtx.destination);
+          } else {
+            osc.connect(filter);
+            sub.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+          }
+
+          osc.start(now + idx * 0.045);
+          sub.start(now + idx * 0.045);
+          osc.stop(now + idx * 0.045 + 1.7);
+          sub.stop(now + idx * 0.045 + 1.7);
+        });
+      }
+
+      // Resize handler
+      function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        cols = Math.max(80, Math.floor(width / CELL_W));
+        rows = Math.max(50, Math.floor(height / CELL_H));
+        offCanvas.width = cols;
+        offCanvas.height = rows;
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+
+      // Helper math functions
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (e0, e1, x) => {
+        const t = clamp((x - e0) / (e1 - e0), 0, 1);
+        return t * t * (3 - 2 * t);
+      };
+      const easeOutBack = (x) => {
+        const t = clamp(x, 0, 1);
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+      };
+
+      function getBlendedTheme() {
+        const cur = THEMES[currentThemeIdx];
+        if (themeBlend >= 1) return cur;
+        const prev = THEMES[prevThemeIdx];
+        const b = smoothstep(0, 1, themeBlend);
+        const blendRgb = (c1, c2) => [
+          Math.round(lerp(c1[0], c2[0], b)),
+          Math.round(lerp(c1[1], c2[1], b)),
+          Math.round(lerp(c1[2], c2[2], b))
+        ];
+        return {
+          name: cur.name,
+          stemBase: blendRgb(prev.stemBase, cur.stemBase),
+          stemLight: blendRgb(prev.stemLight, cur.stemLight),
+          anther: blendRgb(prev.anther, cur.anther),
+          flowers: cur.flowers.map((f, i) => ({
+            inner: blendRgb(prev.flowers[i].inner, f.inner),
+            mid: blendRgb(prev.flowers[i].mid, f.mid),
+            tip: blendRgb(prev.flowers[i].tip, f.tip),
+            speck: blendRgb(prev.flowers[i].speck, f.speck)
+          }))
+        };
+      }
+
+      // Draw a partial quadratic bezier curve (for growing stems)
+      function drawPartialQuadCurve(ctx2d, x0, y0, cx, cy, x1, y1, progress, lineWidth, strokeStyle) {
+        if (progress <= 0.01) return;
+        const steps = Math.max(6, Math.floor(24 * progress));
+        ctx2d.beginPath();
+        ctx2d.moveTo(x0, y0);
+        for (let i = 1; i <= steps; i++) {
+          const t = (i / steps) * progress;
+          const inv = 1 - t;
+          const px = inv * inv * x0 + 2 * inv * t * cx + t * t * x1;
+          const py = inv * inv * y0 + 2 * inv * t * cy + t * t * y1;
+          ctx2d.lineTo(px, py);
+        }
+        ctx2d.lineWidth = lineWidth;
+        ctx2d.lineCap = 'round';
+        ctx2d.strokeStyle = strokeStyle;
+        ctx2d.stroke();
+      }
+
+      // Point on quadratic bezier
+      function getQuadPoint(x0, y0, cx, cy, x1, y1, t) {
+        const inv = 1 - t;
+        return {
+          x: inv * inv * x0 + 2 * inv * t * cx + t * t * x1,
+          y: inv * inv * y0 + 2 * inv * t * cy + t * t * y1
+        };
+      }
+
+      // Draw a single tapered lily petal onto the offscreen canvas
+      function drawLilyPetal(ctx2d, len, wid, angle, colors, isInnerPetal) {
+        ctx2d.save();
+        ctx2d.rotate(angle);
+
+        // Lily petal contour
+        ctx2d.beginPath();
+        ctx2d.moveTo(0, 0);
+        ctx2d.bezierCurveTo(len * 0.26, -wid * 0.95, len * 0.72, -wid * 1.05, len, 0);
+        ctx2d.bezierCurveTo(len * 0.72,  wid * 1.05, len * 0.26,  wid * 0.95, 0, 0);
+        ctx2d.closePath();
+
+        const grad = ctx2d.createLinearGradient(0, 0, len, 0);
+        const [ir, ig, ib] = colors.inner;
+        const [mr, mg, mb] = colors.mid;
+        const [tr, tg, tb] = colors.tip;
+
+        grad.addColorStop(0.0, `rgb(${ir}, ${ig}, ${ib})`);
+        grad.addColorStop(0.52, `rgb(${mr}, ${mg}, ${mb})`);
+        grad.addColorStop(1.0, `rgb(${tr}, ${tg}, ${tb})`);
+
+        ctx2d.fillStyle = grad;
+        ctx2d.fill();
+
+        // Subtle dark separation edge so overlapping petals stay crisp in ASCII
+        ctx2d.lineWidth = isInnerPetal ? 0.55 : 0.45;
+        ctx2d.strokeStyle = 'rgba(0, 0, 0, 0.52)';
+        ctx2d.stroke();
+
+        // Central bright vein
+        ctx2d.beginPath();
+        ctx2d.moveTo(len * 0.06, 0);
+        ctx2d.lineTo(len * 0.86, 0);
+        ctx2d.lineWidth = 0.55;
+        ctx2d.strokeStyle = `rgba(255, 255, 255, 0.32)`;
+        ctx2d.stroke();
+
+        // Characteristic Stargazer / Asiatic speckles near throat
+        const [sr, sg, sb] = colors.speck;
+        ctx2d.fillStyle = `rgb(${sr}, ${sg}, ${sb})`;
+        const speckSeeds = [
+          [0.22, -0.22], [0.28, 0.24], [0.34, -0.35], [0.38, 0.16],
+          [0.44, -0.18], [0.48, 0.36], [0.54, -0.28], [0.58, 0.20]
+        ];
+        for (let s = 0; s < speckSeeds.length; s++) {
+          const sx = len * speckSeeds[s][0];
+          const sy = wid * speckSeeds[s][1];
+          ctx2d.fillRect(sx, sy, 0.9, 0.9);
+        }
+
+        ctx2d.restore();
+      }
+
+      // Render the entire botanical scene onto the low-res offscreen grid canvas
+      function renderBotanicalBuffer(elapsedSec, timeSec, theme) {
+        offCtx.fillStyle = '#000000';
+        offCtx.fillRect(0, 0, cols, rows);
+
+        // Center & scale in grid coordinates
+        // Aspect compensation because each ASCII cell is 7x11
+        const aspectY = CELL_W / CELL_H;
+        const centerX = cols * 0.5;
+        const centerY = rows * 0.555;
+        const scaleX = Math.min(cols * 0.85, rows * (CELL_H / CELL_W) * 0.78);
+        const scaleY = scaleX * aspectY;
+
+        const baseStemX = centerX;
+        const baseStemY = centerY + scaleY * 0.46;
+
+        // Stage timings (matching the 4-stage video bloom)
+        const stemStage = smoothstep(0.0, 1.35, elapsedSec);
+        const leafStage = smoothstep(0.75, 2.15, elapsedSec);
+        const budStage  = smoothstep(1.65, 2.65, elapsedSec);
+
+        // Update terminal status text
+        if (elapsedSec < 1.3) {
+          stageLabel.textContent = `stage: growing_stems() [${Math.round(stemStage * 100)}%]`;
+        } else if (elapsedSec < 2.2) {
+          stageLabel.textContent = `stage: unfurling_leaves() [${Math.round(leafStage * 100)}%]`;
+        } else if (elapsedSec < 2.8) {
+          stageLabel.textContent = `stage: forming_buds() [${Math.round(budStage * 100)}%]`;
+        } else if (elapsedSec < 4.7) {
+          const bloomPct = Math.round(smoothstep(2.2, 4.6, elapsedSec) * 100);
+          stageLabel.textContent = `stage: blooming_lilies() [${bloomPct}%]`;
+        } else {
+          stageLabel.textContent = pointer.hoveredId !== -1
+            ? `inspecting: lily_node[${pointer.hoveredId}] (scale: ${flowerState[pointer.hoveredId].hoverScale.toFixed(2)}x)`
+            : `stage: interactive_bouquet() [READY]`;
+        }
+
+        const [sbr, sbg, sbb] = theme.stemBase;
+        const [slr, slg, slb] = theme.stemLight;
+        const stemColorMain = `rgb(${sbr}, ${sbg}, ${sbb})`;
+        const stemColorHighlight = `rgb(${slr}, ${slg}, ${slb})`;
+
+        // Compute flower positions & spring hover physics first so stems attach seamlessly
+        let hoveredCandidate = -1;
+        let minHoverDist = 999999;
+
+        flowerState.forEach((f) => {
+          const windSwayX = Math.sin(timeSec * 1.45 + f.id * 1.1) * 0.009;
+          const windSwayY = Math.cos(timeSec * 1.15 + f.id * 0.9) * 0.006;
+
+          const baseGX = centerX + (f.nx + windSwayX) * scaleX;
+          const baseGY = centerY + (f.ny + windSwayY) * scaleY;
+          const baseScreenX = baseGX * CELL_W;
+          const baseScreenY = baseGY * CELL_H;
+          const baseScreenR = f.radius * scaleX * CELL_W * 0.88;
+
+          const dx = pointer.x - (baseScreenX + f.offsetX);
+          const dy = pointer.y - (baseScreenY + f.offsetY);
+          const dist = Math.hypot(dx, dy);
+
+          if (elapsedSec > 2.3 && dist < baseScreenR * 0.92 && dist < minHoverDist) {
+            minHoverDist = dist;
+            hoveredCandidate = f.id;
+          }
+        });
+
+        pointer.hoveredId = hoveredCandidate;
+        if (pointer.hoveredId !== pointer.lastHoveredId) {
+          if (pointer.hoveredId !== -1) {
+            const hf = flowerState[pointer.hoveredId];
+            const pan = clamp((hf.screenX / width) * 2 - 1, -0.75, 0.75);
+            playFlowerNote(hf.note, pan, false);
+
+            // Burst a few golden pollen particles on hover entry
+            for (let p = 0; p < 5; p++) {
+              pollenParticles.push(createPollen(
+                false,
+                hf.screenX + (Math.random() - 0.5) * 35,
+                hf.screenY + (Math.random() - 0.5) * 35,
+                theme.anther
+              ));
+            }
+          }
+          pointer.lastHoveredId = pointer.hoveredId;
+          canvas.style.cursor = pointer.hoveredId !== -1 ? 'pointer' : 'default';
+        }
+
+        // Advance spring physics for each flower
+        flowerState.forEach((f) => {
+          const isHovered = (f.id === pointer.hoveredId);
+          const targetScale = (isHovered ? 1.44 : 1.0) + f.clickPulse;
+          f.clickPulse *= 0.86;
+
+          // Spring scale
+          const stiffness = 0.14;
+          const damping = 0.76;
+          f.scaleVel = (f.scaleVel + (targetScale - f.hoverScale) * stiffness) * damping;
+          f.hoverScale += f.scaleVel;
+
+          // 3D pull toward cursor when hovered
+          const windSwayX = Math.sin(timeSec * 1.45 + f.id * 1.1) * 0.009;
+          const windSwayY = Math.cos(timeSec * 1.15 + f.id * 0.9) * 0.006;
+          const rawScreenX = (centerX + (f.nx + windSwayX) * scaleX) * CELL_W;
+          const rawScreenY = (centerY + (f.ny + windSwayY) * scaleY) * CELL_H;
+
+          let targetOffX = 0;
+          let targetOffY = 0;
+          if (isHovered) {
+            targetOffX = clamp((pointer.x - rawScreenX) * 0.28, -28, 28);
+            targetOffY = clamp((pointer.y - rawScreenY) * 0.28 - 10, -28, 22);
+          }
+
+          f.velX = (f.velX + (targetOffX - f.offsetX) * 0.14) * 0.76;
+          f.velY = (f.velY + (targetOffY - f.offsetY) * 0.14) * 0.76;
+          f.offsetX += f.velX;
+          f.offsetY += f.velY;
+
+          f.screenX = rawScreenX + f.offsetX;
+          f.screenY = rawScreenY + f.offsetY;
+          f.screenR = f.radius * scaleX * CELL_W * f.hoverScale;
+
+          f.gx = f.screenX / CELL_W;
+          f.gy = f.screenY / CELL_H;
+        });
+
+        // 1. Draw Main Flower Stems (Stage 1)
+        flowerState.forEach((f) => {
+          const localStemProg = smoothstep(f.delay * 0.6, 1.15 + f.delay * 0.5, elapsedSec);
+          const ctrlX = lerp(baseStemX, f.gx, 0.45) + (f.nx * scaleX * 0.35);
+          const ctrlY = lerp(baseStemY, f.gy, 0.52);
+
+          f.ctrlX = ctrlX;
+          f.ctrlY = ctrlY;
+
+          drawPartialQuadCurve(offCtx, baseStemX + f.nx * 14, baseStemY, ctrlX, ctrlY, f.gx, f.gy, localStemProg, 1.55, stemColorMain);
+          drawPartialQuadCurve(offCtx, baseStemX + f.nx * 14 + 0.5, baseStemY, ctrlX + 0.5, ctrlY, f.gx + 0.5, f.gy, localStemProg, 0.75, stemColorHighlight);
+        });
+
+        // Draw Top Bud Stems & Buds
+        TOP_BUDS.forEach((b, idx) => {
+          const sway = Math.sin(timeSec * 1.6 + idx) * 0.008;
+          const bx = centerX + (b.nx + sway) * scaleX;
+          const by = centerY + b.ny * scaleY;
+          const ctrlX = lerp(baseStemX, bx, 0.5) + b.nx * scaleX * 0.2;
+          const ctrlY = lerp(baseStemY, by, 0.5);
+          const sProg = smoothstep(b.delay, 1.25 + b.delay, elapsedSec);
+
+          drawPartialQuadCurve(offCtx, baseStemX + b.nx * 10, baseStemY, ctrlX, ctrlY, bx, by, sProg, 1.2, stemColorMain);
+
+          // Draw top bud head once stem reaches top
+          const bProg = smoothstep(1.45 + b.delay, 2.4 + b.delay, elapsedSec);
+          if (bProg > 0.01) {
+            offCtx.save();
+            offCtx.translate(bx, by);
+            offCtx.scale(1, aspectY);
+            offCtx.rotate(b.angle + sway * 2);
+
+            const bLen = b.size * scaleX * bProg;
+            const bWid = bLen * 0.38;
+            const bColors = theme.flowers[b.colorIdx];
+
+            // Outer sepal/petal of bud
+            offCtx.beginPath();
+            offCtx.moveTo(0, 0);
+            offCtx.bezierCurveTo(-bWid, -bLen * 0.35, -bWid * 0.8, -bLen * 0.85, 0, -bLen);
+            offCtx.bezierCurveTo( bWid * 0.8, -bLen * 0.85,  bWid, -bLen * 0.35, 0, 0);
+            offCtx.fillStyle = `rgb(${bColors.mid[0]}, ${bColors.mid[1]}, ${bColors.mid[2]})`;
+            offCtx.fill();
+
+            // Green base calyx
+            offCtx.beginPath();
+            offCtx.ellipse(0, -bLen * 0.18, bWid * 0.55, bLen * 0.22, 0, 0, Math.PI * 2);
+            offCtx.fillStyle = stemColorHighlight;
+            offCtx.fill();
+
+            offCtx.restore();
+          }
+        });
+
+        // 2. Draw Unfurling Leaves along Stems (Stage 2)
+        if (leafStage > 0.01) {
+          LEAVES.forEach((lf, idx) => {
+            const st = flowerState[lf.stemIdx];
+            const pt = getQuadPoint(baseStemX + st.nx * 14, baseStemY, st.ctrlX, st.ctrlY, st.gx, st.gy, lf.t);
+            const lProg = easeOutBack(smoothstep(0.75 + idx * 0.06, 2.0 + idx * 0.06, elapsedSec));
+            if (lProg <= 0.01) return;
+
+            const sway = Math.sin(timeSec * 1.8 + idx) * 0.05;
+            const lLen = lf.len * scaleX * lProg;
+            const lWid = lf.width * scaleX * lProg;
+
+            offCtx.save();
+            offCtx.translate(pt.x, pt.y);
+            offCtx.scale(1, aspectY);
+            offCtx.rotate(lf.angle - Math.PI * 0.5 + sway);
+
+            offCtx.beginPath();
+            offCtx.moveTo(0, 0);
+            offCtx.quadraticCurveTo(lLen * 0.45, -lWid, lLen, -lWid * 0.15);
+            offCtx.quadraticCurveTo(lLen * 0.48,  lWid * 0.9, 0, 0);
+            offCtx.fillStyle = idx % 2 === 0 ? stemColorHighlight : stemColorMain;
+            offCtx.fill();
+            offCtx.restore();
+          });
+        }
+
+        // 3 & 4. Draw Buds & Blooming Lilies sorted by depth (Hovered flower always pops to front!)
+        const sortedFlowers = flowerState.slice().sort((a, b) => {
+          const aScore = a.layer * 10 + (a.hoverScale - 1) * 120;
+          const bScore = b.layer * 10 + (b.hoverScale - 1) * 120;
+          return aScore - bScore;
+        });
+
+        sortedFlowers.forEach((f) => {
+          const budAppear = smoothstep(1.6 + f.delay * 0.7, 2.45 + f.delay * 0.7, elapsedSec);
+          const bloomOpen = easeOutBack(smoothstep(2.25 + f.delay * 0.85, 4.45 + f.delay * 0.85, elapsedSec));
+
+          if (budAppear <= 0.01) return;
+
+          const fColors = theme.flowers[f.id];
+          offCtx.save();
+          offCtx.translate(f.gx, f.gy);
+          offCtx.scale(1, aspectY);
+
+          // If only a closed bud so far, or transitioning into bloom
+          if (bloomOpen < 0.25) {
+            const bRadius = f.radius * scaleX * 0.34 * budAppear;
+            offCtx.beginPath();
+            offCtx.ellipse(0, 0, bRadius * 0.65, bRadius, f.rot, 0, Math.PI * 2);
+            offCtx.fillStyle = `rgb(${fColors.mid[0]}, ${fColors.mid[1]}, ${fColors.mid[2]})`;
+            offCtx.fill();
+          }
+
+          if (bloomOpen > 0.02) {
+            const pLen = f.radius * scaleX * bloomOpen * f.hoverScale;
+            const pWid = pLen * (0.31 + (f.hoverScale - 1) * 0.05);
+            const rotNow = f.rot + Math.sin(timeSec * 0.9 + f.id) * 0.03 + (f.hoverScale - 1) * 0.08;
+
+            // Subtle dark ambient occlusion halo when a flower is magnified so it separates cleanly
+            if (f.hoverScale > 1.04) {
+              offCtx.beginPath();
+              offCtx.arc(0, 0, pLen * 0.92, 0, Math.PI * 2);
+              offCtx.fillStyle = `rgba(0, 0, 0, ${clamp((f.hoverScale - 1) * 1.1, 0, 0.55)})`;
+              offCtx.fill();
+            }
+
+            // 3 Outer Petals
+            for (let p = 0; p < 3; p++) {
+              const angle = rotNow + (p * Math.PI * 2) / 3 + Math.PI / 3;
+              drawLilyPetal(offCtx, pLen * 0.96, pWid * 0.94, angle, fColors, false);
+            }
+
+            // 3 Inner Petals
+            for (let p = 0; p < 3; p++) {
+              const angle = rotNow + (p * Math.PI * 2) / 3;
+              drawLilyPetal(offCtx, pLen, pWid * 1.04, angle, fColors, true);
+            }
+
+            // Glowing throat center
+            offCtx.beginPath();
+            offCtx.arc(0, 0, pLen * 0.11, 0, Math.PI * 2);
+            offCtx.fillStyle = stemColorHighlight;
+            offCtx.fill();
+
+            // 6 Protruding Lily Stamens & Golden Anthers
+            const stamenProg = clamp((bloomOpen - 0.35) / 0.65, 0, 1);
+            if (stamenProg > 0.02) {
+              const [ar, ag, ab] = theme.anther;
+              for (let s = 0; s < 6; s++) {
+                const sAngle = rotNow + (s * Math.PI) / 3 + 0.14;
+                const sLen = pLen * (0.46 + (s % 2) * 0.08) * stamenProg * (1 + (f.hoverScale - 1) * 0.12);
+                const endX = Math.cos(sAngle) * sLen;
+                const endY = Math.sin(sAngle) * sLen;
+                const cpX = Math.cos(sAngle - 0.18) * sLen * 0.55;
+                const cpY = Math.sin(sAngle - 0.18) * sLen * 0.55;
+
+                offCtx.beginPath();
+                offCtx.moveTo(0, 0);
+                offCtx.quadraticCurveTo(cpX, cpY, endX, endY);
+                offCtx.lineWidth = 0.65;
+                offCtx.strokeStyle = `rgb(255, 235, 195)`;
+                offCtx.stroke();
+
+                // Pollen-rich anther tip
+                offCtx.save();
+                offCtx.translate(endX, endY);
+                offCtx.rotate(sAngle + 0.5);
+                offCtx.fillStyle = `rgb(${ar}, ${ag}, ${ab})`;
+                offCtx.fillRect(-1.3, -0.65, 2.6, 1.3);
+                offCtx.restore();
+              }
+            }
+          }
+
+          offCtx.restore();
+        });
+      }
+
+      // Main animation loop: Rasterize offscreen buffer into directional & shaded ASCII + overlays
+      let lastFrameTime = performance.now();
+      let frameCount = 0;
+      let displayFps = 60;
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+
+        // FPS counter
+        frameCount++;
+        if (now - lastFrameTime >= 500) {
+          displayFps = Math.round((frameCount * 1000) / (now - lastFrameTime));
+          frameCount = 0;
+          lastFrameTime = now;
+          fpsLabel.textContent = `Ln 81, Col 12 · ${displayFps} FPS · UTF-8`;
+        }
+
+        if (themeBlend < 1) {
+          themeBlend = Math.min(1, themeBlend + 0.035);
+        }
+
+        const elapsedSec = (now - startTime) * 0.001;
+        const timeSec = now * 0.001;
+        const theme = getBlendedTheme();
+
+        // 1. Paint low-res botanical buffer
+        renderBotanicalBuffer(elapsedSec, timeSec, theme);
+
+        // 2. Read pixel buffer and render colored ASCII characters
+        const imgData = offCtx.getImageData(0, 0, cols, rows).data;
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.font = '600 10.5px "JetBrains Mono", monospace';
+        ctx.textBaseline = 'top';
+
+        const activeRamp = codeVision ? CODE_RAMP : BOTANICAL_RAMP;
+        const rampLen = activeRamp.length;
+
+        // Track bounding box telemetry like the VS Code snippet in the video
+        let xmin = 1e9, xmax = -1e9, ymin = 1e9, ymax = -1e9, activeCells = 0;
+
+        for (let r = 0; r < rows; r++) {
+          const rowOffset = r * cols * 4;
+          const py = r * CELL_H;
+
+          for (let c = 0; c < cols; c++) {
+            const idx = rowOffset + c * 4;
+            const cr = imgData[idx];
+            const cg = imgData[idx + 1];
+            const cb = imgData[idx + 2];
+
+            // Fast luminance
+            const lum = (cr * 77 + cg * 150 + cb * 29) >> 8;
+            if (lum < 12) continue;
+
+            activeCells++;
+            if (c < xmin) xmin = c;
+            if (c > xmax) xmax = c;
+            if (r < ymin) ymin = r;
+            if (r > ymax) ymax = r;
+
+            const px = c * CELL_W;
+            let char = '';
+
+            // Detect green stem/leaf pixels to use directional stem characters (|, /, \, :)
+            const isGreenDominant = (cg > cr * 1.25 && cg > cb * 1.28);
+
+            if (codeVision) {
+              const rIdx = Math.min(rampLen - 1, Math.floor((lum / 255) * (rampLen - 1)) + 1);
+              char = activeRamp[(rIdx + ((r + c) % 2)) % rampLen];
+            } else if (isGreenDominant && lum < 175) {
+              // Directional stem/vein character based on horizontal position from center
+              const dxFromCenter = c - cols * 0.5;
+              if (Math.abs(dxFromCenter) < 4) {
+                char = '|';
+              } else if (dxFromCenter < 0) {
+                char = (r + c) % 3 === 0 ? ':' : '\\';
+              } else {
+                char = (r + c) % 3 === 0 ? ':' : '/';
+              }
+            } else {
+              const rIdx = Math.min(rampLen - 1, Math.max(1, Math.floor((lum / 255) * (rampLen - 1))));
+              char = activeRamp[rIdx];
+            }
+
+            // Boost color vibrancy slightly for glowing ASCII contrast on pure black
+            if (codeVision && isGreenDominant) {
+              ctx.fillStyle = `rgb(85, 255, 130)`;
+            } else {
+              const boost = 1.16;
+              const rr = Math.min(255, (cr * boost) | 0);
+              const gg = Math.min(255, (cg * boost) | 0);
+              const bb = Math.min(255, (cb * boost) | 0);
+              ctx.fillStyle = `rgb(${rr},${gg},${bb})`;
+            }
+
+            ctx.fillText(char, px, py);
+          }
+        }
+
+        // Update live bounding-box math line in the footer every 6 frames
+        if (frameCount % 6 === 0 && activeCells > 0) {
+          mathLine.innerHTML =
+            `<span class="kw">let</span> xmin = <span class="num">${xmin}</span>, xmax = <span class="num">${xmax}</span>, ymin = <span class="num">${ymin}</span>, ymax = <span class="num">${ymax}</span>, cells = <span class="num">${activeCells}</span>; ` +
+            `<span class="kw">for</span> (<span class="kw">let</span> k = <span class="num">0</span>; k &lt; pts.length; k++) { x = pts[k][<span class="num">0</span>]; y = pts[k][<span class="num">1</span>]; <span class="fn">renderASCII</span>(x, y); }`;
+        }
+
+        // 3. Draw Floating ASCII Pollen & Fireflies
+        for (let i = pollenParticles.length - 1; i >= 0; i--) {
+          const p = pollenParticles[i];
+          p.x += p.vx + Math.sin(timeSec * 1.5 + p.phase) * 0.25;
+          p.y += p.vy;
+
+          if (p.decay > 0) {
+            p.life -= p.decay;
+            if (p.life <= 0) {
+              pollenParticles.splice(i, 1);
+              continue;
+            }
+          } else if (p.y < height * 0.12) {
+            p.y = height * 0.78;
+            p.x = width * (0.28 + Math.random() * 0.44);
+          }
+
+          const twinkle = (0.55 + 0.45 * Math.sin(timeSec * 3.2 + p.phase)) * p.alpha * p.life;
+          ctx.fillStyle = `rgba(${p.rgb[0]}, ${p.rgb[1]}, ${p.rgb[2]}, ${twinkle.toFixed(2)})`;
+          ctx.fillText(p.char, p.x, p.y);
+        }
+
+        // 4. Draw Falling ASCII Petals (Triggered on flower click)
+        const floorY = height - 48;
+        for (let i = 0; i < fallingPetals.length; i++) {
+          const fp = fallingPetals[i];
+          if (!fp.landed) {
+            fp.vy += 0.038; // gentle gravity
+            fp.x += fp.vx + Math.sin(timeSec * 3.0 + fp.swayPhase) * 0.85;
+            fp.y += fp.vy;
+            fp.rot += fp.vRot;
+
+            if (fp.y >= floorY) {
+              fp.y = floorY - (i % 4) * 3;
+              fp.landed = true;
+            }
+          }
+
+          // Render miniature 5-character ASCII petal cluster
+          const [pr, pg, pb] = fp.rgb;
+          const [tr, tg, tb] = fp.tipRgb;
+          const dx = Math.cos(fp.rot) * CELL_W;
+          const dy = Math.sin(fp.rot) * CELL_W * 0.6;
+
+          ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+          ctx.fillText('@', fp.x, fp.y);
+          ctx.fillText('*', fp.x + dx, fp.y + dy);
+          ctx.fillText('*', fp.x - dx, fp.y - dy);
+          ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
+          ctx.fillText('+', fp.x + dx * 1.8, fp.y + dy * 1.8);
+          ctx.fillText('.', fp.x - dx * 1.8, fp.y - dy * 1.8);
+        }
+
+        // 5. "Code Vision" Matrix Overlay (Wireframe Bezier paths + node coordinates)
+        if (codeVision) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(109, 255, 142, 0.28)';
+          ctx.lineWidth = 1;
+          ctx.font = '500 9.5px "JetBrains Mono", monospace';
+
+          flowerState.forEach((f) => {
+            ctx.beginPath();
+            ctx.arc(f.screenX, f.screenY, f.screenR * 0.68, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(109, 255, 142, 0.82)';
+            ctx.fillText(
+              `pts[${f.id}]:(${Math.round(f.gx)},${Math.round(f.gy)}) s=${f.hoverScale.toFixed(2)}`,
+              f.screenX - 42,
+              f.screenY - f.screenR * 0.72
+            );
+          });
+          ctx.restore();
+        }
+      }
+
+      // Interaction Handlers
+      window.addEventListener('pointermove', (e) => {
+        pointer.vx = e.clientX - pointer.x;
+        pointer.vy = e.clientY - pointer.y;
+        pointer.x = e.clientX;
+        pointer.y = e.clientY;
+        pointer.gx = e.clientX / CELL_W;
+        pointer.gy = e.clientY / CELL_H;
+      });
+
+      canvas.addEventListener('pointerdown', (e) => {
+        pointer.x = e.clientX;
+        pointer.y = e.clientY;
+
+        if (pointer.hoveredId !== -1) {
+          // Clicked directly on a flower -> spring bounce + shed falling ASCII petals + play chord
+          const hf = flowerState[pointer.hoveredId];
+          hf.clickPulse = 0.28;
+          const theme = getBlendedTheme();
+          spawnFallingPetals(hf, theme.flowers[hf.id]);
+          const pan = clamp((hf.screenX / width) * 2 - 1, -0.75, 0.75);
+          playFlowerNote(hf.note, pan, true);
+        } else {
+          // Clicked background -> replay 4-stage growth & bloom animation
+          replayBloom();
+        }
+      });
+
+      function replayBloom() {
+        startTime = performance.now();
+        fallingPetals.length = 0;
+        playFlowerNote(523.25, 0, true);
+      }
+
+      function cycleTheme() {
+        prevThemeIdx = currentThemeIdx;
+        currentThemeIdx = (currentThemeIdx + 1) % THEMES.length;
+        themeBlend = 0;
+        badgeTheme.textContent = `Palette: ${THEMES[currentThemeIdx].name} [T]`;
+        playFlowerNote(659.25, 0, true);
+      }
+
+      function toggleCodeVision() {
+        codeVision = !codeVision;
+        btnCode.classList.toggle('active', codeVision);
+        badgeCode.textContent = codeVision ? 'Mode: Code Matrix [C]' : 'Mode: Botanical ASCII [C]';
+        playFlowerNote(codeVision ? 880 : 587.33, 0, false);
+      }
+
+      function toggleAudio() {
+        soundEnabled = !soundEnabled;
+        badgeAudio.textContent = soundEnabled ? 'Synth: ON 🎵 [M]' : 'Synth: MUTED 🔇 [M]';
+        if (soundEnabled) playFlowerNote(659.25, 0, false);
+      }
+
+      // UI Button Listeners
+      btnTheme.addEventListener('click', (e) => { e.stopPropagation(); cycleTheme(); });
+      badgeTheme.addEventListener('click', (e) => { e.stopPropagation(); cycleTheme(); });
+
+      btnCode.addEventListener('click', (e) => { e.stopPropagation(); toggleCodeVision(); });
+      badgeCode.addEventListener('click', (e) => { e.stopPropagation(); toggleCodeVision(); });
+
+      badgeAudio.addEventListener('click', (e) => { e.stopPropagation(); toggleAudio(); });
+      badgeReplay.addEventListener('click', (e) => { e.stopPropagation(); replayBloom(); });
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === ' ' || key === 'r') {
+          e.preventDefault();
+          replayBloom();
+        } else if (key === 'c') {
+          toggleCodeVision();
+        } else if (key === 't') {
+          cycleTheme();
+        } else if (key === 'm') {
+          toggleAudio();
+        } else if (key === '1' || key === '2' || key === '3') {
+          const idx = parseInt(key, 10) - 1;
+          if (idx !== currentThemeIdx) {
+            prevThemeIdx = currentThemeIdx;
+            currentThemeIdx = idx;
+            themeBlend = 0;
+            badgeTheme.textContent = `Palette: ${THEMES[currentThemeIdx].name} [T]`;
+          }
+        }
+      });
+
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
